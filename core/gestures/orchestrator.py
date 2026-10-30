@@ -7,6 +7,7 @@ the old GestureProcessor.process(landmarks: list[Landmark]).
 """
 
 import logging
+from collections.abc import Callable
 
 from core.tracker import HandsResult
 from core.display import VirtualDesktop, TrackpadZone
@@ -30,25 +31,32 @@ class GestureOrchestrator:
 
     def __init__(
         self,
-        actuator: MouseActuator,
+        actuator: MouseActuator | None,
         desktop: VirtualDesktop,
         trackpad: TrackpadZone,
+        on_cursor: Callable[[float, float], None] | None = None,
+        on_gesture: Callable[[str], None] | None = None,
     ) -> None:
-        self._right = RightHandProcessor(actuator, desktop, trackpad)
-        self._left = LeftHandProcessor(actuator)
-        self._two = TwoHandProcessor(actuator)
-        logger.info("GestureOrchestrator ready (dual-hand mode)")
+        self._right = RightHandProcessor(
+            actuator,
+            desktop,
+            trackpad,
+            on_cursor=on_cursor,
+            on_gesture=on_gesture,
+        )
+        self._left = LeftHandProcessor(actuator) if actuator is not None else None
+        self._two = TwoHandProcessor(actuator) if actuator is not None else None
+        mode = "dual-hand desktop" if actuator is not None else "right-hand browser"
+        logger.info("GestureOrchestrator ready (%s mode)", mode)
 
     def process(self, hands: HandsResult) -> None:
         """Process one frame. Call once per frame regardless of hand visibility."""
         self._right.process(hands.right)
 
-        if hands.left is not None:
+        if self._left is not None:
             self._left.process(hands.left)
-        else:
-            self._left.process(None)
 
-        if hands.left is not None and hands.right is not None:
+        if self._two is not None and hands.left is not None and hands.right is not None:
             self._two.process(hands.left, hands.right)
 
     @property

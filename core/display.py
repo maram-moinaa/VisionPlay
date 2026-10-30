@@ -17,7 +17,7 @@ from dataclasses import dataclass
 import numpy as np
 from screeninfo import get_monitors
 
-from config import TRACKPAD_MARGIN, CAMERA_WIDTH, CAMERA_HEIGHT
+from config import TRACKPAD_MARGIN, CAMERA_WIDTH, CAMERA_HEIGHT, INVERT_CURSOR_X
 
 logger = logging.getLogger(__name__)
 
@@ -108,40 +108,33 @@ def build_trackpad_zone() -> TrackpadZone:
     )
 
 
+def map_to_normalized_cursor(
+    norm_x: float,
+    norm_y: float,
+    trackpad: TrackpadZone,
+) -> tuple[float, float]:
+    """Map raw, unmirrored MediaPipe coordinates into viewport coordinates [0, 1]."""
+    camera_x = (1.0 - norm_x if INVERT_CURSOR_X else norm_x) * CAMERA_WIDTH
+    camera_y = norm_y * CAMERA_HEIGHT
+
+    camera_x = max(trackpad.x_min, min(trackpad.x_max, camera_x))
+    camera_y = max(trackpad.y_min, min(trackpad.y_max, camera_y))
+
+    cursor_x = float(np.interp(camera_x, [trackpad.x_min, trackpad.x_max], [0.0, 1.0]))
+    cursor_y = float(np.interp(camera_y, [trackpad.y_min, trackpad.y_max], [0.0, 1.0]))
+    return cursor_x, cursor_y
+
+
 def map_to_desktop(
     norm_x: float,
     norm_y: float,
     trackpad: TrackpadZone,
     desktop: VirtualDesktop,
 ) -> tuple[int, int]:
-    """
-    Translate normalized MediaPipe coordinates [0.0–1.0] to physical desktop pixels.
-
-    MediaPipe returns normalized coords; we first scale to webcam pixel space,
-    then clamp to the trackpad zone, then interpolate to desktop space.
-
-    Args:
-        norm_x: Normalized x from MediaPipe (0.0 = left edge of frame)
-        norm_y: Normalized y from MediaPipe (0.0 = top edge of frame)
-        trackpad: Active webcam zone
-        desktop: Virtual desktop geometry
-
-    Returns:
-        (screen_x, screen_y) in physical desktop pixels
-    """
-    # Mirror x-axis: webcam sees user's right as image-left, so invert
-    # for natural 1:1 hand-to-cursor mapping (move hand right -> cursor right)
-    px = (1.0 - norm_x) * CAMERA_WIDTH
-    py = norm_y * CAMERA_HEIGHT
-
-    # Clamp to trackpad zone
-    px = max(trackpad.x_min, min(trackpad.x_max, px))
-    py = max(trackpad.y_min, min(trackpad.y_max, py))
-
-    # Interpolate to desktop space
-    screen_x = int(np.interp(px, [trackpad.x_min, trackpad.x_max], [0, desktop.total_width - 1]))
-    screen_y = int(np.interp(py, [trackpad.y_min, trackpad.y_max], [0, desktop.total_height - 1]))
-
+    """Map normalized MediaPipe coordinates to physical virtual-desktop pixels."""
+    cursor_x, cursor_y = map_to_normalized_cursor(norm_x, norm_y, trackpad)
+    screen_x = int(cursor_x * max(desktop.total_width - 1, 0))
+    screen_y = int(cursor_y * max(desktop.total_height - 1, 0))
     return screen_x, screen_y
 
 

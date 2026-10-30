@@ -4,3 +4,6 @@ numpy
 screeninfo
 pynput
 psutil
+fastapi
+uvicorn
+httpx2

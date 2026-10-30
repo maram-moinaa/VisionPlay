@@ -33,6 +33,10 @@ class _LowPassFilter:
             self._s = self._y
         return self._y
 
+    def reset(self) -> None:
+        self._y = None
+        self._s = None
+
     @property
     def last_value(self) -> float | None:
         return self._s
@@ -112,3 +116,9 @@ class OneEuroFilter:
         alpha = _smoothing_factor(t_e, cutoff)
         self._x.set_alpha(alpha)
         return self._x.filter(x)
+
+    def reset(self) -> None:
+        """Forget the previous motion so the next sample starts without stale lag."""
+        self._x.reset()
+        self._dx.reset()
+        self._last_time = None

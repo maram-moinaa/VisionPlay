@@ -20,21 +20,36 @@ MP_TRACKING_CONFIDENCE = 0.5
 # Prevents the user needing to stretch their hand to screen corners.
 TRACKPAD_MARGIN = 100             # pixels, applied to all four edges
 
+# The raw webcam frame is unmirrored, so a user's physical rightward motion
+# appears as decreasing MediaPipe x. Invert once here to make the cursor follow
+# the user's motion (selfie-mirror behavior). Set False only for raw-image motion.
+# This is applied once in core.display; do not mirror the camera frame as well.
+INVERT_CURSOR_X = True
+
 # ── 1€ Filter ─────────────────────────────────────────────────────────────────
 # Casiez et al. 2012 — adaptive low-pass filter for cursor smoothing.
 # mincutoff: lower = more smoothing at rest (reduce jitter)
 # beta: higher = less lag at high speed (reduce lag during fast motion)
 # dcutoff: derivative smoothing; usually leave at 1.0
-ONE_EURO_MINCUTOFF = 0.5           # lower = more smoothing at rest (less jitter)
-ONE_EURO_BETA = 0.007
+ONE_EURO_MINCUTOFF = 0.8           # response at rest: lower smooths more, higher tracks faster
+ONE_EURO_BETA = 0.02               # faster movement raises cutoff to reduce motion lag
 ONE_EURO_DCUTOFF = 1.0
+
+# ── G3 Web Mode ───────────────────────────────────────────────────────────────
+WEB_MODE_ENABLED = True
+DWELL_DURATION_SECONDS = 1.5
+API_HOST = "127.0.0.1"            # Keep the tracking API local by default
+API_PORT = 8765
+WEBSOCKET_PATH = "/ws/tracking"
+FRONTEND_ORIGIN = "http://localhost:5173"
 
 # ── Gesture Thresholds ────────────────────────────────────────────────────────
 # All distances are Euclidean norms of normalized MediaPipe coordinates [0.0–1.0].
 
-# Thumb-pinch thresholds
-THUMB_INDEX_CLICK_DIST  = 0.060   # thumb tip ↔ index tip → left click
-THUMB_MIDDLE_CLICK_DIST = 0.065   # thumb tip ↔ middle tip → right click
+# Pinch detection: thumb-index distance as a fraction of palm width (landmarks 5–17).
+PINCH_ENTER_RATIO = 0.45          # enter pinch below this normalized distance
+PINCH_RELEASE_RATIO = 0.60        # release pinch above this hysteresis threshold
+PINCH_DEBOUNCE_SECONDS = 0.05     # ignore brief landmark noise on pinch and release
 
 # Legacy (kept for reference during migration — unused after Task 5)
 CLICK_DISTANCE_THRESHOLD = 0.03
@@ -48,13 +63,8 @@ DOUBLE_CLICK_WINDOW_S = 0.4       # second pinch within this window = double cli
 # Fist detection — all finger tips must be below their PIP joints
 FIST_CURL_THRESHOLD = 0.0         # unused numerically; fist = all 5 curled (boolean)
 
-# Wrist scroll (peace-sign posture)
-WRIST_VELOCITY_THRESHOLD = 0.008  # normalized units/s — minimum wrist flick to register
-SCROLL_TICK_SCALE        = 0.003  # velocity / scale = tick count (clamped 1–5)
-SCROLL_COOLDOWN_S        = 0.12   # minimum gap between scroll emissions
-
-# Scroll: number of OS scroll ticks per gesture detection cycle (legacy fallback)
-SCROLL_TICKS = 3
+# Two-hand wrist gestures
+WRIST_VELOCITY_THRESHOLD = 0.008  # normalized units/s — minimum wrist swipe to register
 
 # Two-hand gestures
 ZOOM_WRIST_DELTA    = 0.05        # normalized wrist-to-wrist distance change per zoom tick
@@ -72,7 +82,7 @@ FLIP_HANDEDNESS = False
 # ── Debug ─────────────────────────────────────────────────────────────────────
 # Set True to open a debug window showing detected landmarks, hand labels (L/R),
 # gesture state, and pinch distances. Press Q in the window to quit.
-DEBUG_GESTURES = False
+DEBUG_GESTURES = True
 
 # ── Windows OS ────────────────────────────────────────────────────────────────
 # Do not change these unless you understand the Windows scheduler implications.

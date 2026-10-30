@@ -13,6 +13,7 @@ Key optimizations:
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 import cv2
 import mediapipe as mp
@@ -61,7 +62,12 @@ class HandTracker:
     """
 
     def __init__(self) -> None:
-        base_options = python.BaseOptions(model_asset_path=MP_MODEL_PATH)
+        model_path = Path(MP_MODEL_PATH)
+        if not model_path.is_absolute():
+            model_path = Path(__file__).resolve().parents[1] / model_path
+        if not model_path.is_file():
+            raise FileNotFoundError(f"MediaPipe hand model not found: {model_path}")
+        base_options = python.BaseOptions(model_asset_path=str(model_path))
         options = HandLandmarkerOptions(
             base_options=base_options,
             running_mode=RunningMode.IMAGE,
